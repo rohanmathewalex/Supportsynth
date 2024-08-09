@@ -36,15 +36,44 @@ const ChatPage: React.FC = () => {
 
   const navigate = useNavigate();
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (newMessage.trim()) {
       const newMessageObj: Message = {
         id: currentChat.length,
         sender: "user",
         content: newMessage,
       };
+
+      // Add the user's message to the chat
       setCurrentChat([...currentChat, newMessageObj]);
       setNewMessage("");
+
+      try {
+        // Send the user's message to the backend
+        const response = await fetch("http://localhost:5000/api/chat/respond", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`, // Ensure the token is sent
+          },
+          body: JSON.stringify({ message: newMessageObj.content }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          const aiMessageObj: Message = {
+            id: currentChat.length + 1,
+            sender: "bot",
+            content: data.response,
+          };
+          setCurrentChat((prevChat) => [...prevChat, aiMessageObj]);
+        } else {
+          console.error("Failed to get AI response:", data.error);
+        }
+      } catch (error) {
+        console.error("Error during message sending:", error);
+      }
     }
   };
 
