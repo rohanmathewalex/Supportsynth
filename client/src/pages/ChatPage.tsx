@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   TextField,
@@ -13,8 +13,6 @@ import {
   ListItemText,
   AppBar,
   Toolbar,
-  Card,
-  CardContent,
 } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
@@ -27,19 +25,36 @@ interface Message {
   content: string;
 }
 
-interface ChatSession {
+interface Session {
   messages: Message[];
-  createdAt: Date;
 }
 
 const ChatPage: React.FC = () => {
-  const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
+  const [chatHistory, setChatHistory] = useState<Session[]>([]);
   const [currentChat, setCurrentChat] = useState<Message[]>([
     { id: 0, sender: "bot", content: "Hello, how can I assist you today?" },
   ]);
   const [newMessage, setNewMessage] = useState("");
 
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchChatHistory = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/api/chat/history", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        const data = await response.json();
+        setChatHistory(data.sessions || []);
+      } catch (error) {
+        console.error("Failed to fetch chat history:", error);
+      }
+    };
+
+    fetchChatHistory();
+  }, []);
 
   const handleSendMessage = async () => {
     if (newMessage.trim()) {
@@ -49,7 +64,7 @@ const ChatPage: React.FC = () => {
         content: newMessage,
       };
 
-      setCurrentChat((prev) => [...prev, newMessageObj]);
+      setCurrentChat([...currentChat, newMessageObj]);
       setNewMessage("");
 
       try {
@@ -82,30 +97,22 @@ const ChatPage: React.FC = () => {
 
   const handleEndChat = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/chat/end-session",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({ messages: currentChat }),
-        }
-      );
+      const response = await fetch("http://localhost:5000/api/chat/end", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ messages: currentChat }),
+      });
 
       if (response.ok) {
-        const newSession: ChatSession = {
-          messages: currentChat,
-          createdAt: new Date(),
-        };
-        setChatHistory((prev) => [...prev, newSession]);
+        setChatHistory((prevHistory) => [
+          ...prevHistory,
+          { messages: currentChat },
+        ]);
         setCurrentChat([
-          {
-            id: 0,
-            sender: "bot",
-            content: "Chat ended. How can I assist you today?",
-          },
+          { id: 0, sender: "bot", content: "How can I assist you today?" },
         ]);
       } else {
         console.error("Failed to end chat session");
@@ -117,29 +124,28 @@ const ChatPage: React.FC = () => {
 
   const handleClearHistory = async () => {
     try {
-      const response = await fetch(
-        "http://localhost:5000/api/chat/clear-history",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      const response = await fetch("http://localhost:5000/api/chat/clear", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
       if (response.ok) {
         setChatHistory([]);
+        setCurrentChat([
+          {
+            id: 0,
+            sender: "bot",
+            content: "Hello, how can I assist you today?",
+          },
+        ]);
       } else {
         console.error("Failed to clear chat history");
       }
     } catch (error) {
       console.error("Error clearing chat history:", error);
     }
-  };
-
-  const handleLoadSession = (session: ChatSession) => {
-    setCurrentChat(session.messages);
   };
 
   const handleLogout = () => {
@@ -194,6 +200,14 @@ const ChatPage: React.FC = () => {
           <Typography variant="h6" sx={{ padding: 2 }}>
             Chat History
           </Typography>
+          <Button
+            onClick={handleClearHistory}
+            sx={{ margin: 2 }}
+            variant="contained"
+            color="error"
+          >
+            Clear History
+          </Button>
           <List>
             {chatHistory.map((session, index) => (
               <ListItem
@@ -204,23 +218,15 @@ const ChatPage: React.FC = () => {
                   margin: "5px",
                   borderRadius: "5px",
                 }}
-                onClick={() => handleLoadSession(session)}
+                onClick={() => setCurrentChat(session.messages)}
               >
                 <ListItemText
-                  primary={`Chat Session ${index + 1}`}
-                  secondary={new Date(session.createdAt).toLocaleString()}
+                  primary={`Chat ${index + 1}`}
+                  secondary={session.messages[0]?.content || "No messages"}
                 />
               </ListItem>
             ))}
           </List>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleClearHistory}
-            sx={{ marginTop: 2 }}
-          >
-            Clear History
-          </Button>
         </Grid>
         <Grid item xs={9}>
           <Paper
@@ -271,7 +277,7 @@ const ChatPage: React.FC = () => {
                 variant="contained"
                 color="secondary"
                 onClick={handleEndChat}
-                sx={{ marginLeft: 2 }}
+                sx={{ ml: 2 }}
               >
                 End Chat
               </Button>

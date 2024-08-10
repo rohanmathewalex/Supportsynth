@@ -6,8 +6,8 @@ const router = express.Router();
 
 // Define the route for sending messages to the chatbot
 router.post('/respond', authMiddleware, getChatbotResponse);
-router.post('/end-session', authMiddleware, endChatSession);
-router.post('/clear-history', authMiddleware, clearChatHistory);
+router.post('/end', authMiddleware, endChatSession);
+router.delete('/clear', authMiddleware, clearChatHistory);
 
 module.exports = router;
 

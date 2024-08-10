@@ -1,7 +1,7 @@
 const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
+const memoryService = require('../services/memoryService');
 
- 
 
 exports.clearChatHistory = async (req, res) => {
     try {
@@ -27,61 +27,52 @@ exports.clearChatHistory = async (req, res) => {
     }
 };
 
-
 // Function to handle sending messages to the OpenAI API and receiving responses
 exports.getChatbotResponse = async (req, res) => {
     try {
-        const { message } = req.body; // Extract the user's message from the request body
-        const userId = req.user.userId; // Get the user ID from the authenticated user
+        const { message } = req.body;
+        const userId = req.user.userId;
 
-        // Retrieve existing chat history for the user
-        let chatHistory = await ChatHistory.findOne({ userId });
-
-        // If no chat history exists, create a new one
-        if (!chatHistory) {
-            chatHistory = new ChatHistory({ userId, sessions: [] });
+        // Check if the user is asking about the previous question
+        if (message.toLowerCase().includes('previously asked question')) {
+            const lastUserMessage = await memoryService.getLastUserMessage(userId);
+            if (lastUserMessage) {
+                return res.status(200).json({ response: `The last question you asked was: "${lastUserMessage.content}"` });
+            } else {
+                return res.status(200).json({ response: "You haven't asked any questions in this session." });
+            }
         }
 
-        // Determine if a new session is needed
-        if (chatHistory.sessions.length === 0 || shouldStartNewSession(chatHistory)) {
-            chatHistory.sessions.push({ messages: [] }); // Add a new session
-        }
-
-        // Get the current session (the last one in the sessions array)
-        const currentSession = chatHistory.sessions[chatHistory.sessions.length - 1];
-
-        // Add the user's message to the current session
-        currentSession.messages.push({ sender: 'user', content: message });
+        // Store the user's message
+        await memoryService.storeMessage(userId, message, 'user');
 
         // Send the user's message to the OpenAI API
         const response = await axios.post('https://api.openai.com/v1/chat/completions', {
-            model: 'gpt-3.5-turbo', // Specify the correct model
+            model: 'gpt-3.5-turbo',
             messages: [{ role: 'user', content: message }],
             max_tokens: 150,
             temperature: 0.7,
         }, {
             headers: {
-                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`, // Use your OpenAI API key
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
             }
         });
 
-        // Extract the bot's response from the API's response
+        // Extract the bot's response
         const botMessage = response.data.choices[0].message.content.trim();
 
-        // Add the bot's response to the current session
-        currentSession.messages.push({ sender: 'bot', content: botMessage });
-
-        // Save the updated chat history in the database
-        await chatHistory.save();
+        // Store the bot's response
+        await memoryService.storeMessage(userId, botMessage, 'bot');
 
         // Send the AI's response back to the frontend
         res.status(200).json({ response: botMessage });
 
     } catch (error) {
-        console.error('Error communicating with OpenAI:', error);
+        console.error('Error communicating with OpenAI:', error.message);
         res.status(500).json({ error: 'Failed to get AI response' });
     }
 };
+
 
 // Function to end the chat session and save it
 exports.endChatSession = async (req, res) => {
@@ -119,3 +110,4 @@ function shouldStartNewSession(chatHistory) {
     const sessionAgeInMinutes = (Date.now() - new Date(lastSession.createdAt).getTime()) / (1000 * 60);
     return sessionAgeInMinutes > 30; // Start a new session if the last session is older than 30 minutes
 }
+
