@@ -27,8 +27,13 @@ interface Message {
   content: string;
 }
 
+interface ChatSession {
+  messages: Message[];
+  createdAt: Date;
+}
+
 const ChatPage: React.FC = () => {
-  const [chatHistory, setChatHistory] = useState<Message[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatSession[]>([]);
   const [currentChat, setCurrentChat] = useState<Message[]>([
     { id: 0, sender: "bot", content: "Hello, how can I assist you today?" },
   ]);
@@ -44,17 +49,15 @@ const ChatPage: React.FC = () => {
         content: newMessage,
       };
 
-      // Add the user's message to the chat
-      setCurrentChat([...currentChat, newMessageObj]);
+      setCurrentChat((prev) => [...prev, newMessageObj]);
       setNewMessage("");
 
       try {
-        // Send the user's message to the backend
         const response = await fetch("http://localhost:5000/api/chat/respond", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`, // Ensure the token is sent
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
           body: JSON.stringify({ message: newMessageObj.content }),
         });
@@ -77,10 +80,71 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const handleEndChat = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/chat/end-session",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ messages: currentChat }),
+        }
+      );
+
+      if (response.ok) {
+        const newSession: ChatSession = {
+          messages: currentChat,
+          createdAt: new Date(),
+        };
+        setChatHistory((prev) => [...prev, newSession]);
+        setCurrentChat([
+          {
+            id: 0,
+            sender: "bot",
+            content: "Chat ended. How can I assist you today?",
+          },
+        ]);
+      } else {
+        console.error("Failed to end chat session");
+      }
+    } catch (error) {
+      console.error("Error ending chat session:", error);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/chat/clear-history",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        setChatHistory([]);
+      } else {
+        console.error("Failed to clear chat history");
+      }
+    } catch (error) {
+      console.error("Error clearing chat history:", error);
+    }
+  };
+
+  const handleLoadSession = (session: ChatSession) => {
+    setCurrentChat(session.messages);
+  };
+
   const handleLogout = () => {
-    console.log("Logout button clicked");
-    localStorage.removeItem("token"); // Remove the authentication token
-    navigate("/login"); // Redirect to the login page
+    localStorage.removeItem("token");
+    navigate("/login");
   };
 
   const messageStyle = (sender: string) => ({
@@ -90,7 +154,7 @@ const ChatPage: React.FC = () => {
     marginBottom: 2,
     boxShadow: "0 4px 6px rgba(0,0,0,0.2)",
     backgroundColor:
-      sender === "user" ? "rgba(76, 175, 80, 0.3)" : "rgba(0, 0, 255, 0.1)", // Green for user, light blue for bot
+      sender === "user" ? "rgba(76, 175, 80, 0.3)" : "rgba(0, 0, 255, 0.1)",
     borderRadius: "10px",
   });
 
@@ -131,7 +195,7 @@ const ChatPage: React.FC = () => {
             Chat History
           </Typography>
           <List>
-            {chatHistory.map((msg, index) => (
+            {chatHistory.map((session, index) => (
               <ListItem
                 button
                 key={index}
@@ -140,14 +204,23 @@ const ChatPage: React.FC = () => {
                   margin: "5px",
                   borderRadius: "5px",
                 }}
+                onClick={() => handleLoadSession(session)}
               >
                 <ListItemText
-                  primary={`Chat ${msg.id}`}
-                  secondary={msg.content.substring(0, 30) + "..."}
+                  primary={`Chat Session ${index + 1}`}
+                  secondary={new Date(session.createdAt).toLocaleString()}
                 />
               </ListItem>
             ))}
           </List>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleClearHistory}
+            sx={{ marginTop: 2 }}
+          >
+            Clear History
+          </Button>
         </Grid>
         <Grid item xs={9}>
           <Paper
@@ -193,6 +266,14 @@ const ChatPage: React.FC = () => {
                 onClick={handleSendMessage}
               >
                 Send
+              </Button>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleEndChat}
+                sx={{ marginLeft: 2 }}
+              >
+                End Chat
               </Button>
             </Box>
           </Paper>
