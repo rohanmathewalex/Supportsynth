@@ -17,13 +17,10 @@ const RegisterPage: React.FC = () => {
 
   const handleRegister = async () => {
     try {
-      const response = await axios.post(
-        "https://supportsynth.onrender.com/api/auth/register",
-        {
-          username,
-          password,
-        }
-      );
+      await axios.post("https://supportsynth.onrender.com/api/auth/register", {
+        username,
+        password,
+      });
       // Registration was successful, now navigate to the login page
       navigate("/chat", { replace: true });
     } catch (err) {
