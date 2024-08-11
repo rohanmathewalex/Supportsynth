@@ -77,30 +77,46 @@ exports.getChatbotResponse = async (req, res) => {
 // Function to end the chat session and save it
 exports.endChatSession = async (req, res) => {
     try {
+      const userId = req.user.userId;
+  
+      // Find the user's chat history
+      let chatHistory = await ChatHistory.findOne({ userId });
+  
+      if (!chatHistory) {
+        return res.status(404).json({ error: 'Chat history not found' });
+      }
+  
+      // Get the current session (the last one in the sessions array)
+      const currentSession = chatHistory.sessions[chatHistory.sessions.length - 1];
+  
+      if (!currentSession || !currentSession.messages || currentSession.messages.length === 0) {
+        return res.status(400).json({ error: 'No messages to save in the session' });
+      }
+  
+      // Save the updated chat history in the database
+      await chatHistory.save();
+  
+      // Respond to the frontend
+      res.status(200).json({ message: 'Chat session ended and saved successfully' });
+  
+    } catch (error) {
+      console.error('Error ending chat session:', error);
+      res.status(500).json({ error: 'Failed to end chat session' });
+    }
+  };
+exports.getChatHistory = async (req, res) => {
+    try {
         const userId = req.user.userId;
-
-        // Find the user's chat history
-        let chatHistory = await ChatHistory.findOne({ userId });
+        const chatHistory = await ChatHistory.findOne({ userId });
 
         if (!chatHistory) {
-            return res.status(404).json({ error: 'Chat history not found' });
+            return res.status(404).json({ message: 'No chat history found.' });
         }
 
-        // Get the current session (the last one in the sessions array)
-        const currentSession = chatHistory.sessions[chatHistory.sessions.length - 1];
-
-        // Only save the session if there are messages in it
-        if (currentSession.messages.length > 0) {
-            // Save the updated chat history in the database
-            await chatHistory.save();
-        }
-
-        // Respond to the frontend
-        res.status(200).json({ message: 'Chat session ended and saved successfully' });
-
+        res.status(200).json({ sessions: chatHistory.sessions });
     } catch (error) {
-        console.error('Error ending chat session:', error);
-        res.status(500).json({ error: 'Failed to end chat session' });
+        console.error('Error fetching chat history:', error);
+        res.status(500).json({ message: 'Failed to fetch chat history.' });
     }
 };
 

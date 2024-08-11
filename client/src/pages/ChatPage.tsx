@@ -35,6 +35,7 @@ const ChatPage: React.FC = () => {
     { id: 0, sender: "bot", content: "Hello, how can I assist you today?" },
   ]);
   const [newMessage, setNewMessage] = useState("");
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   const navigate = useNavigate();
 
@@ -67,31 +68,73 @@ const ChatPage: React.FC = () => {
       setCurrentChat([...currentChat, newMessageObj]);
       setNewMessage("");
 
-      try {
-        const response = await fetch("http://localhost:5000/api/chat/respond", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({ message: newMessageObj.content }),
-        });
+      if (uploadedFile) {
+        // Handle document upload and query together
+        handleUploadAndAnalyze();
+      } else {
+        // Handle normal text query
+        try {
+          const response = await fetch("http://localhost:5000/api/chat/respond", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({ message: newMessageObj.content }),
+          });
 
-        const data = await response.json();
+          const data = await response.json();
 
-        if (response.ok) {
-          const aiMessageObj: Message = {
-            id: currentChat.length + 1,
-            sender: "bot",
-            content: data.response,
-          };
-          setCurrentChat((prevChat) => [...prevChat, aiMessageObj]);
-        } else {
-          console.error("Failed to get AI response:", data.error);
+          if (response.ok) {
+            const aiMessageObj: Message = {
+              id: currentChat.length + 1,
+              sender: "bot",
+              content: data.response,
+            };
+            setCurrentChat((prevChat) => [...prevChat, aiMessageObj]);
+          } else {
+            console.error("Failed to get AI response:", data.error);
+          }
+        } catch (error) {
+          console.error("Error during message sending:", error);
         }
-      } catch (error) {
-        console.error("Error during message sending:", error);
       }
+    }
+  };
+
+  const handleUploadAndAnalyze = async () => {
+    if (!uploadedFile) return;
+
+    const formData = new FormData();
+    formData.append("file", uploadedFile);
+    formData.append("query", newMessage);
+
+    try {
+      const response = await fetch("http://localhost:5000/api/upload/upload-and-query", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        const aiMessageObj: Message = {
+          id: currentChat.length + 1,
+          sender: "bot",
+          content: result.answer,
+        };
+        setCurrentChat((prevChat) => [...prevChat, aiMessageObj]);
+      } else {
+        console.error("Failed to get AI response:", result.error);
+      }
+    } catch (error) {
+      console.error("Error uploading and analyzing document:", error);
+    } finally {
+      // Clear uploaded file after processing
+      setUploadedFile(null);
     }
   };
 
@@ -159,10 +202,14 @@ const ChatPage: React.FC = () => {
     padding: 1,
     marginBottom: 2,
     boxShadow: "0 4px 6px rgba(0,0,0,0.2)",
-    backgroundColor:
-      sender === "user" ? "rgba(76, 175, 80, 0.3)" : "rgba(0, 0, 255, 0.1)",
+    backgroundColor: sender === "user" ? "rgba(76, 175, 80, 0.3)" : "rgba(0, 0, 255, 0.1)",
     borderRadius: "10px",
   });
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setUploadedFile(file || null);
+  };
 
   return (
     <Box
@@ -264,7 +311,7 @@ const ChatPage: React.FC = () => {
               />
               <IconButton color="primary" component="label" sx={{ p: "10px" }}>
                 <CloudUploadIcon />
-                <input type="file" hidden />
+                <input type="file" hidden onChange={handleFileChange} />
               </IconButton>
               <Button
                 variant="contained"
