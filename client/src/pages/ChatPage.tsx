@@ -42,14 +42,11 @@ const ChatPage: React.FC = () => {
   useEffect(() => {
     const fetchChatHistory = async () => {
       try {
-        const response = await fetch(
-          "https://supportsynth.onrender.com/api/chat/history",
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
+        const response = await fetch("http://localhost:5000/api/chat/history", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
         const data = await response.json();
         setChatHistory(data.sessions || []);
       } catch (error) {
@@ -78,7 +75,7 @@ const ChatPage: React.FC = () => {
         // Handle normal text query
         try {
           const response = await fetch(
-            "https://supportsynth.onrender.com/api/chat/respond",
+            "http://localhost:5000/api/chat/respond",
             {
               method: "POST",
               headers: {
@@ -117,7 +114,7 @@ const ChatPage: React.FC = () => {
 
     try {
       const response = await fetch(
-        "https://supportsynth.onrender.com/api/upload/upload-and-query",
+        "http://localhost:5000/api/upload/upload-and-query",
         {
           method: "POST",
           headers: {
@@ -149,17 +146,14 @@ const ChatPage: React.FC = () => {
 
   const handleEndChat = async () => {
     try {
-      const response = await fetch(
-        "https://supportsynth.onrender.com/api/chat/end",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({ messages: currentChat }),
-        }
-      );
+      const response = await fetch("http://localhost:5000/api/chat/end", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ messages: currentChat }),
+      });
 
       if (response.ok) {
         setChatHistory((prevHistory) => [
@@ -179,15 +173,12 @@ const ChatPage: React.FC = () => {
 
   const handleClearHistory = async () => {
     try {
-      const response = await fetch(
-        "https://supportsynth.onrender.com/api/chat/clear",
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      const response = await fetch("http://localhost:5000/api/chat/clear", {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
 
       if (response.ok) {
         setChatHistory([]);

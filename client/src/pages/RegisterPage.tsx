@@ -17,7 +17,7 @@ const RegisterPage: React.FC = () => {
 
   const handleRegister = async () => {
     try {
-      await axios.post("https://supportsynth.onrender.com/api/auth/register", {
+      await axios.post("http://localhost:5000/api/auth/register", {
         username,
         password,
       });
