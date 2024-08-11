@@ -42,11 +42,14 @@ const ChatPage: React.FC = () => {
   useEffect(() => {
     const fetchChatHistory = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/chat/history", {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const response = await fetch(
+          "https://supportsynth.onrender.com/api/chat/history",
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
         const data = await response.json();
         setChatHistory(data.sessions || []);
       } catch (error) {
@@ -74,14 +77,17 @@ const ChatPage: React.FC = () => {
       } else {
         // Handle normal text query
         try {
-          const response = await fetch("http://localhost:5000/api/chat/respond", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-            body: JSON.stringify({ message: newMessageObj.content }),
-          });
+          const response = await fetch(
+            "https://supportsynth.onrender.com/api/chat/respond",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+              body: JSON.stringify({ message: newMessageObj.content }),
+            }
+          );
 
           const data = await response.json();
 
@@ -110,13 +116,16 @@ const ChatPage: React.FC = () => {
     formData.append("query", newMessage);
 
     try {
-      const response = await fetch("http://localhost:5000/api/upload/upload-and-query", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        "https://supportsynth.onrender.com/api/upload/upload-and-query",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
 
       const result = await response.json();
 
@@ -140,14 +149,17 @@ const ChatPage: React.FC = () => {
 
   const handleEndChat = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/chat/end", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({ messages: currentChat }),
-      });
+      const response = await fetch(
+        "https://supportsynth.onrender.com/api/chat/end",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ messages: currentChat }),
+        }
+      );
 
       if (response.ok) {
         setChatHistory((prevHistory) => [
@@ -167,12 +179,15 @@ const ChatPage: React.FC = () => {
 
   const handleClearHistory = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/chat/clear", {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const response = await fetch(
+        "https://supportsynth.onrender.com/api/chat/clear",
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
       if (response.ok) {
         setChatHistory([]);
@@ -202,7 +217,8 @@ const ChatPage: React.FC = () => {
     padding: 1,
     marginBottom: 2,
     boxShadow: "0 4px 6px rgba(0,0,0,0.2)",
-    backgroundColor: sender === "user" ? "rgba(76, 175, 80, 0.3)" : "rgba(0, 0, 255, 0.1)",
+    backgroundColor:
+      sender === "user" ? "rgba(76, 175, 80, 0.3)" : "rgba(0, 0, 255, 0.1)",
     borderRadius: "10px",
   });
 

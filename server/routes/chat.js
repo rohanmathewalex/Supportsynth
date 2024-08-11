@@ -1,5 +1,5 @@
 const express = require('express');
-const { getChatbotResponse, endChatSession, clearChatHistory, getChatHistory } = require('../controllers/chatController');
+const { handleChatQuery, getChatbotResponse, endChatSession, clearChatHistory, getChatHistory } = require('../controllers/chatController');
 const authMiddleware = require('../middleware/authMiddleware'); // Ensure the user is authenticated
 
 const router = express.Router();
@@ -9,6 +9,7 @@ router.post('/respond', authMiddleware, getChatbotResponse);
 router.post('/end', authMiddleware, endChatSession);
 router.delete('/clear', authMiddleware, clearChatHistory);
 router.get('/history', authMiddleware, getChatHistory);
+router.post('/query', handleChatQuery);
 
 module.exports = router;
 

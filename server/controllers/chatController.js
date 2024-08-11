@@ -1,6 +1,45 @@
 const axios = require('axios');
 const ChatHistory = require('../models/ChatHistory');
 const memoryService = require('../services/memoryService');
+const { Configuration, OpenAI } = require('openai');
+
+const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY, // Make sure your API key is correctly set
+});
+
+ 
+exports.handleChatQuery = async (req, res) => {
+    const query = req.body.query;
+    const documentContext = req.session.documentContext || "";  // Get document context from session if available
+
+    console.log("Received query:", query); // Log the received query
+    console.log("Document context in session:", documentContext); // Log the document context
+
+    const prompt = documentContext
+        ? `Based on the following document, answer the query: "${query}". Document: "${documentContext}"`
+        : query;
+
+    try {
+        const response = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
+                { role: "system", content: "You are an AI assistant." },
+                { role: "user", content: prompt },
+            ],
+            max_tokens: 150,
+            temperature: 0.7,
+        });
+
+        const answer = response.choices[0].message.content.trim();
+        res.json({ answer });
+    } catch (error) {
+        console.error('Error processing chat query:', error.message);
+        res.status(500).json({ error: 'Failed to process the chat query.' });
+    }
+};
+
+
+
 
 
 exports.clearChatHistory = async (req, res) => {
@@ -77,33 +116,33 @@ exports.getChatbotResponse = async (req, res) => {
 // Function to end the chat session and save it
 exports.endChatSession = async (req, res) => {
     try {
-      const userId = req.user.userId;
-  
-      // Find the user's chat history
-      let chatHistory = await ChatHistory.findOne({ userId });
-  
-      if (!chatHistory) {
-        return res.status(404).json({ error: 'Chat history not found' });
-      }
-  
-      // Get the current session (the last one in the sessions array)
-      const currentSession = chatHistory.sessions[chatHistory.sessions.length - 1];
-  
-      if (!currentSession || !currentSession.messages || currentSession.messages.length === 0) {
-        return res.status(400).json({ error: 'No messages to save in the session' });
-      }
-  
-      // Save the updated chat history in the database
-      await chatHistory.save();
-  
-      // Respond to the frontend
-      res.status(200).json({ message: 'Chat session ended and saved successfully' });
-  
+        const userId = req.user.userId;
+
+        // Find the user's chat history
+        let chatHistory = await ChatHistory.findOne({ userId });
+
+        if (!chatHistory) {
+            return res.status(404).json({ error: 'Chat history not found' });
+        }
+
+        // Get the current session (the last one in the sessions array)
+        const currentSession = chatHistory.sessions[chatHistory.sessions.length - 1];
+
+        if (!currentSession || !currentSession.messages || currentSession.messages.length === 0) {
+            return res.status(400).json({ error: 'No messages to save in the session' });
+        }
+
+        // Save the updated chat history in the database
+        await chatHistory.save();
+
+        // Respond to the frontend
+        res.status(200).json({ message: 'Chat session ended and saved successfully' });
+
     } catch (error) {
-      console.error('Error ending chat session:', error);
-      res.status(500).json({ error: 'Failed to end chat session' });
+        console.error('Error ending chat session:', error);
+        res.status(500).json({ error: 'Failed to end chat session' });
     }
-  };
+};
 exports.getChatHistory = async (req, res) => {
     try {
         const userId = req.user.userId;

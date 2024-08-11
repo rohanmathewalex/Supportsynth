@@ -16,7 +16,7 @@ const LoginPage: React.FC = () => {
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/login', {
+      const response = await axios.post('https://supportsynth.onrender.com/api/auth/login', {
         username, password
       });
       console.log(response)
