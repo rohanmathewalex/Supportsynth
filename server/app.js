@@ -37,6 +37,17 @@ mongoose.connect(process.env.MONGO_URI)
     .catch(err => console.error("MongoDB connection error:", err));
 
 // Routes
+
+app.get('/', (req, res, next) => {
+
+
+    res.json({
+        message: "Welcome to the SupportSynth API"
+    })
+} )
+
+
+
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);  // Normal chat routes
 app.use('/api/upload', uploadRoutes);  // Document upload and query routes
